@@ -1,0 +1,106 @@
+{
+  "review_independence": "same-family",
+  "acceptance_status": "provisional",
+  "base_commit": "95d7b5f2a8a0e52dc91dff3fda49e704a06f46cc",
+  "rounds": [
+    {
+      "round": 1,
+      "raw_response": {
+        "undeclared": [
+          {
+            "site": "code/gwo_optimize_fclc.m:126–134",
+            "decision": "GCLC averages all contributions for each role within a generation, then performs one EMA update per observed role. Unobserved roles retain their previous credit.",
+            "why_it_matters": "A-009 and A-013 do not specify global-credit aggregation. One update of the mean differs from sequential updates for every probe and determines the effective learning rate of the global-credit baseline.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/gwo_optimize_fclc.m:276–282",
+            "decision": "IQR uses linear interpolation at positions 1+0.25*(n−1) and 1+0.75*(n−1).",
+            "why_it_matters": "A-008 specifies IQR but not its sample-quantile convention. This convention determines the contribution normalization and therefore learned credit.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/gwo_optimize_fclc.m:139–145; code/run_fclc_stage1_dev.m:260–269",
+            "decision": "FCLC/GCLC/static traces assign the completed generation's result to every crossed 1% FE threshold; GWO uses the latest recorded generation at or before each threshold.",
+            "why_it_matters": "The same FEPercent label therefore denotes different observation times across algorithms. Adaptive-mode samples can include evaluations performed after the labeled threshold.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/run_fclc_stage1_dev.m:269",
+            "decision": "Every GWO BestPropagated trace sample is populated with the terminal best value.",
+            "why_it_matters": "This field denotes a terminal result rather than best propagated so far at the checkpoint. The saved Sphere seed-41 first checkpoint contains BestEvaluated=10319.0147819664 and BestPropagated=1.21877182810663e-65. For this no-probe baseline, both checkpoint series should represent the same history. The executor has acknowledged this finding and is correcting it.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/gwo_optimize_fclc.m:160–191; code/run_fclc_stage1_dev.m:287–296",
+            "decision": "Final weight diagnostics recompute follower membership from terminal fitness and derive weights from credit after the last update. WeightSpread is the arithmetic mean of the three sample standard deviations across those final followers.",
+            "why_it_matters": "These are terminal derived weights, potentially never used to generate a candidate, rather than the last applied weights or a time-averaged separation measure. Terminal membership is recomputed without applying the next generation's leader-to-follower reset. This convention determines what the reported follower separation means.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/analyze_fclc_stage1.m:12–16, 57–64",
+            "decision": "Analysis uses nonnegative residual error max(BestFitness−optimum,0), with optima [0,0,0,0,300,1800]. Relative improvement divides the difference of mean errors by max(abs(comparator mean error),1e-12). Wins and losses use strict, seed-matched error comparisons.",
+            "why_it_matters": "Neither the error clipping nor the relative-improvement denominator is declared. They determine ties, reported improvement percentages, and the interpretation of near-optimal results.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/analyze_fclc_stage1.m:22–46, 48–66",
+            "decision": "Each problem ranks algorithms by arithmetic mean error over seeds, using average ranks for ties; overall rank equally averages the six problem ranks. Pairwise testing covers FCLC against each comparator, uses MATLAB's default two-sided rank-sum behavior, and explicitly assigns p=1 when all combined observations are identical.",
+            "why_it_matters": "A-014 declares average ranks and unadjusted rank-sum tests but leaves the ranking aggregation, comparison family, and tie convention unspecified. These choices define the reported overall ordering and statistical comparisons.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/run_fclc_stage1_dev.m:33–48, 133–141, 182–186",
+            "decision": "Successful cached runs are considered reusable solely by problem, dimension, seed, and algorithm. RunKey omits the FE budget and method settings; existing rows outside the current request remain in the merged output.",
+            "why_it_matters": "This defines experiment identity and output scope. Reusing an output directory with a different supported syntheticMaxFEs argument can select an earlier successful result without checking that its budget matches the requested task.",
+            "class": "semantic"
+          },
+          {
+            "site": "code/run_fclc_stage1_dev.m:203–217",
+            "decision": "CEC GWO reuse requires a complete compatible baseline from results/cec2022_apl_v2_6worker_dev/cec2022_development.csv; missing or incompatible baseline data aborts execution instead of scheduling replacement GWO runs.",
+            "why_it_matters": "A-003 permits reuse of matching rows but does not declare this historical artifact as a mandatory input or define behavior when suitable rows are unavailable.",
+            "class": "interface"
+          },
+          {
+            "site": "code/run_fclc_stage1_dev.m:116–122, 140–146",
+            "decision": "Per-run exceptions become rows containing NaN measurements and the exception message in Status; other runs continue, artifacts are written, and the runner returns normally. A later invocation retries non-OK RunKeys.",
+            "why_it_matters": "The requested success command and build checks do not declare these failure semantics. Runner completion alone does not mean every requested run succeeded.",
+            "class": "interface"
+          }
+        ],
+        "stale_rows": [
+          {
+            "row": "A-002",
+            "site": "implement-stage/ASSUMPTIONS.md; code/run_fclc_stage1_dev.m:197",
+            "declared_choice": "Rosenbrock bounds are [-100,100].",
+            "code_choice": "Rosenbrock bounds are [-30,30].",
+            "assessment": "The reviewed ledger and code did not match. The executor has subsequently reported correcting the ledger. The other declared choices match the implementation at their stated level; the additional semantic and interface choices above remain undeclared in the reviewed snapshot."
+          }
+        ],
+        "semantic_undeclared": 8,
+        "verdict": "gaps"
+      },
+      "resolution": [
+        "Corrected A-002 to Rosenbrock [-30,30] and marked the correction as sweep-sourced.",
+        "Declared per-generation GCLC role aggregation and linear-interpolated IQR quartiles.",
+        "Changed GWO trace resampling to the first completed generation at/above the FE threshold; repaired saved GWO propagated traces to equal evaluated traces. No objective runs or endpoint metrics changed.",
+        "Declared terminal weights as next-generation diagnostics; the 1%-FE trace records weights applied during search.",
+        "Declared residual clipping, optima, rank aggregation, tie convention, unadjusted two-sided rank-sum, strict wins/losses, and relative-improvement denominator.",
+        "Reuse checks now require matching MaxFEs; the stage output directory is fixed to its declared parameter tuple and subset runs preserve prior rows.",
+        "Declared missing-baseline abort and per-run exception-row/retry behavior."
+      ]
+    },
+    {
+      "round": 2,
+      "raw_response": {
+        "undeclared": [],
+        "stale_rows": [],
+        "semantic_undeclared": 0,
+        "verdict": "clean"
+      },
+      "assessment": "same-family/provisional; the clean result means no remaining ledger mismatches were found, not that the algorithm is correct or the research claim is valid."
+    }
+  ],
+  "current_round": 2,
+  "status": "completed"
+}

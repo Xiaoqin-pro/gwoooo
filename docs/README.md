@@ -41,6 +41,18 @@ analyze_fad1_cec2022();
 
 The run is checkpointed in `results/fad1_no_individual_fallback_6worker_dev/`; completed RunKeys are skipped on resume. B0–B5 data are reused. This screen completed 240/240 new runs with exact FE budgets and no fallback calls. Across the seven-variant comparison its average function rank is 1.667; it remains a development result on the reused seeds 41–50, not an independent confirmation. See `../results/fad1_no_individual_fallback_6worker_dev/FAD1_REPORT.md` for the analysis and limits.
 
+## FCLC-GWO Stage-1 mechanism screen
+
+This is an independent branch from FAD. It compares standard GWO, fixed alpha-dominant weights, global leader credit (GCLC), and follower-specific counterfactual credit (FCLC), with a shared FE cap and seeds 41–50.
+
+```matlab
+addpath('code');
+run_fclc_stage1_dev([],41:50,6);
+analyze_fclc_stage1();
+```
+
+The runner reuses matching CEC2022 GWO rows for F1/F6 at D=10, and saves new runs, traces, and per-follower credit/weight diagnostics in `results/fclc_stage1_6worker_dev/`. The smoke run is separately stored in `results/fclc_stage1_smoke/` and is not benchmark evidence. The first screen ranked fixed weights first; see `../results/fclc_stage1_6worker_dev/FCLC_STAGE1_REPORT.md` before deciding whether this mechanism should be expanded.
+
 ## Current status
 
-The legacy 960-run screen, APL migration 1440-run screen, staged A0–A7 experiment, FAD-GWO B5 screen, and FAD-1 B6 fallback ablation completed on six MATLAB workers. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` for design decisions and `implement-stage/BUILD_NOTE.md` for earlier implementation notes.
+The legacy, APL, staged A0–A7, FAD B5, FAD-1 B6, and FCLC Stage-1 screens are complete. The FCLC screen ran four methods across four synthetic functions and two CEC2022 functions with seeds 41–50; 20 matching CEC GWO rows were reused and 220 missing rows were run on six workers. Its fixed-weight baseline ranked first, so the FCLC mechanism is still under diagnosis. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` and `implement-stage/BUILD_NOTE.md` for the current method choices and build record.

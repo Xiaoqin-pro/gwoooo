@@ -2,7 +2,7 @@
 
 **工作区：** 本项目目录（GitHub 仓库根目录）  
 **目标：** 以 CEC2022 开发筛选为基础，逐步形成有消融、有应用验证的改进 GWO 论文方案。  
-**状态：** APLPSO 迁移、DLM/BDL/PTL-P 单机制、DLM-2+BDL 组合、FAD-GWO 首轮筛选及 FAD-1 个体级回退消融均已完成；所有新实验复用种子 41–50，旧结果保留。
+**状态：** APLPSO 迁移、DLM/BDL/PTL-P 单机制、DLM-2+BDL 组合、FAD-GWO/FAD-1 筛选和 FCLC-GWO Stage-1 机制筛选均已完成；新实验复用种子 41–50，旧结果保留。FAD 与 FCLC 是两条独立研究分支。
 
 ## 1. 已整理的文献来源
 
@@ -25,6 +25,8 @@ CEC2022 函数包从组织者仓库取得，原文件与输入数据放在 `data
 
 FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，由 `code/run_fad_cec2022_dev.m` 运行 B5；B0–B4 从旧实验表复用。该入口也支持 `FAD1`，仅关闭个体级 GWO 回退、保留整代 FE 推进兜底，并只运行新 B6；B0–B5 从旧表复用。FAD-1 另存独立结果目录。分析入口分别为 `code/analyze_fad_cec2022.m` 和 `code/analyze_fad1_cec2022.m`。
 
+FCLC-GWO 是新建的独立算法分支，核心代码为 `code/gwo_optimize_fclc.m`，runner 和分析入口为 `code/run_fclc_stage1_dev.m`、`code/analyze_fclc_stage1.m`。Stage-1 只测试稀疏反事实 leader-channel credit 与权重；不包含 FAD、APL、DLM 或 BDL。
+
 根据 APLPSO 原文核对：先随机抽取 5 个不同学习对象并按适应度排序；仅当五个对象都优于当前个体时进入 APL；`c1=1`，`cj=1/(j−1)−(FE/FEmax)/(j+1)`（j=2…5）；按 3、4、5 个对象依次提案，先改进就停止，否则从已评价候选档案中选最好的一个。加权 GWO 采用归一化的 `cj` 组合各领导狼的 GWO 提案，这是迁移设计，不是 APLPSO 原公式。APLPSO PDF 位于本地 `article/` 文献库，未纳入本仓库。
 
 运行与分析入口：
@@ -37,6 +39,8 @@ FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，由 `code/run_fad_cec2022_de
 - `gwo_optimize_apl.m`：APL-v2/weighted 两个原型及其与 Tournament 的组合；`gwo_optimize.m` 保留旧实现。
 - `run_fad_cec2022_dev.m`：运行原 FAD B5 或无个体级回退的 FAD-1 B6；按 RunKey 跳过已完成记录。
 - `analyze_fad1_cec2022.m`：FAD-1 与 B0–B5 的配对统计、Holm 校正、收敛/多样性轨迹和诊断汇总。
+- `gwo_optimize_fclc.m`：Stage-1 的 FCLC/GCLC/固定权重实现；FAD 入口与结果保持独立。
+- `run_fclc_stage1_dev.m` / `analyze_fclc_stage1.m`：FCLC、GCLC、固定权重和 GWO 的 6-worker 小规模机制筛选与分析。
 
 ## 3. 已完成的计算
 
@@ -110,6 +114,15 @@ FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，由 `code/run_fad_cec2022_de
 - FAD-1 的个体级与整代兜底计数在 240 次运行中均为 0。旧 FAD-0 的历史计数未区分两类回退；其 `FallbackCount` 总量约占 FE 的 45.69%，只能作为合并统计。
 - 收敛与配对分析见 `results/fad1_no_individual_fallback_6worker_dev/FAD1_REPORT.md`。FAD-0 未保存 best-so-far 收敛曲线，本轮没有重跑 FAD-0；其最终误差和多样性轨迹可复用。
 
+### FCLC-GWO Stage-1 独立分支
+
+- 机制定义与 RL-LGWO、DLGWO 的公式对照见 `docs/FCLC_FORMULA_COMPARISON.md`。对照发现 RL-LGWO 已有 follower-specific 的两种离散 leader-influence 选择；DLGWO 已有以适应度测试坐标级 leader 替换的共享 exemplar。FCLC 的窄主张是同一随机提案下的稀疏、逐 follower、整向量 leave-one-leader-out 条件删除值。
+- Stage-1 使用 Sphere、Rastrigin、Rosenbrock、Ackley（D=30）及 CEC2022 F1/F6（D=10），四版本：GWO、固定 [0.6,0.3,0.1] 权重、GCLC 全局信用、FCLC 个体信用。种子 41–50，N=30，六 MATLAB worker。
+- 新增 220/220 次运行全部成功；匹配复用 20 条 CEC GWO 结果，合并 240 行；所有 FEs 均匹配 MaxFEs。
+- 平均排名：固定权重 1.750、GWO 2.333、FCLC 2.583、GCLC 3.333。未校正 rank-sum 对比中，FCLC 对 GWO 有 2/6 项 p<.05（方向一胜一负），对固定权重 2/6 项显著且均不利于 FCLC，对 GCLC 1/6 项显著并支持 FCLC。
+- FCLC 平均额外探测约占 MaxFEs 的 9.08%；终止 credit 派生权重（下一步角色重置前）的 follower 离散度约 0.0078，角色权重总体接近等权；1% FE 轨迹记录运行中实际应用的权重。该筛选尚未支持 FCLC 优于标准 GWO 或简单固定权重，暂不组合 DLM/APL。
+- 详见 `results/fclc_stage1_6worker_dev/FCLC_STAGE1_REPORT.md`、逐次结果 CSV、信用/权重诊断和 1% FE 轨迹。当前种子筛选不是独立确认。
+
 ## 5. 实验边界
 
 - 开发筛选用了 10 个种子，不等于正式的 30 次确认实验。
@@ -120,11 +133,11 @@ FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，由 `code/run_fad_cec2022_de
 
 ## 6. 建议的下一步方法与实验
 
-目前仅完成了故障定位的第一项 FAD-1；不启动新种子，也未运行其余 FAD 消融。FAD-1 的表现支持继续按既定定位矩阵逐项检查恢复项、维度反馈和档案接受策略，再决定主算法及确认实验。
+FAD-1 之后新开了 FCLC 分支，Stage-1 原型已跑完。FCLC 的权重差异与性能优势目前都不够强；下一步优先审查反事实 credit 是否有预测力及权重为何接近等权，再决定修订或暂停 FCLC。FAD-2 及后续 FAD 消融仍未启动。
 
 更复杂的 DLM-S、参数敏感性、其他组合和 30 种子正式确认尚未运行。当前不应把开发筛选结果写成最终确认性结论。
 
 ## 7. 状态
 
 - 当前未运行 MATLAB 进程。
-- 所有 MATLAB worker/批处理目前均已结束；B5 FAD 与 B6 FAD-1 开发筛选完整。没有运行新种子；FAD-2 及后续故障定位实验尚未启动。
+- 所有 MATLAB worker/批处理目前均已结束；B5 FAD、B6 FAD-1 和 FCLC Stage-1 均已结束。没有生成新种子；FAD-2 尚未启动，FCLC 尚无 DLM/APL 组合或完整 CEC2022 筛选。

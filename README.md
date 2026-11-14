@@ -25,7 +25,7 @@ To run a saved CEC2022 screening entry point, the runner accepts a six-worker lo
 
 ## Current research stage
 
-APLPSO-inspired adaptive pattern learning has been transferred to GWO and screened against DLM, BDL, and PTL-P variants. The FAD-1 fallback ablation is now complete: it removes the individual GWO fallback while retaining the other FAD mechanisms, and it ranks first in the seven-variant CEC2022 development screen. Its code and results are in `code/gwo_optimize_fad.m` and `results/fad1_no_individual_fallback_6worker_dev/`; the original FAD screen remains under `results/fad_gwo_6worker_dev/`. All development runs reuse seeds 41–50 and are not an independent confirmation campaign. Result files and run manifests are under `results/`.
+The project now has two separate lines. The established FAD branch retains its original code and results; FAD-1 removes only the individual GWO fallback. A new FCLC-GWO branch tests sparse, follower-specific counterfactual leader credit without importing FAD/APL/DLM/BDL. Its first-stage 10-seed screen is in `results/fclc_stage1_6worker_dev/`; fixed alpha-dominant weights ranked first, so the FCLC mechanism has not yet earned a larger benchmark campaign. All new experiments reused seed IDs 41–50 and are development screens, not independent confirmation. Result files and run manifests are under `results/`.
 
 ## Benchmark source
 
