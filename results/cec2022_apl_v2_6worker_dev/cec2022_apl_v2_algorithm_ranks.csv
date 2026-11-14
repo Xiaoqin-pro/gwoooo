@@ -1,0 +1,7 @@
+Variant,AverageFunctionRank,BestMeanErrorCases
+gwo,5.875,0
+tournament,4.83333333333333,0
+apl_v2,2.20833333333333,7
+apl_weighted,1.75,12
+tournament_apl_v2,3.33333333333333,1
+tournament_apl_weighted,3,4

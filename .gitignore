@@ -1,0 +1,9 @@
+# Keep the reference MEX, input data, experiment CSV/MAT outputs, and MATLAB source.
+# Omit redundant downloaded snapshots/archives; their provenance is recorded in data/SOURCE.md.
+data/source_archives/
+data/source_repo_snapshot/
+data/CEC2022_reference/*.m
+vendor/
+*.asv
+slprj/
+code/archive/

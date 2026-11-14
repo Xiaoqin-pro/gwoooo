@@ -1,0 +1,54 @@
+# Assumption Ledger — Adaptive Leader GWO prototype
+<!-- ASK mode: never -->
+
+| ID | Under-determined by the request | Chosen | Class | Source |
+|----|--------------------------------|--------|-------|--------|
+| A-001 | Implementation language | MATLAB, as specified in the preceding experiment plan | interface | default |
+| A-002 | Existing code location and reuse | Keep the optimization project in this repository root; keep the separate `article/` library outside the published repository | interface | user |
+| A-003 | Benchmark function source | Use the unmodified CEC2022 MEX and `input_data` bundle from the official organizer repository; keep its provenance and archive hash alongside the project | interface | default |
+| A-004 | How tournament learning maps to GWO | Keep the current best wolf as α; select distinct β/δ guide wolves by tournaments of sizes 2 and 4 among wolves better than the current wolf, with sorted distinct fallback when the dominator pool is too small. Additional guides in the combined 4/5-guide patterns use alternating tournament sizes. | semantic | default |
+| A-005 | How adaptive patterns map to GWO | Evaluate k=3,4,5 distinct guide wolves; average their standard GWO guide proposals. Try k in ascending order, accept the first strict improvement; if none improves, accept the best evaluated proposal. | semantic | default |
+| A-006 | FE accounting | Count every initial and candidate objective call; stop before exceeding `MaxFEs`; retain the best-so-far candidate for reporting | semantic | default |
+| A-007 | Boundary handling | Clip each proposed coordinate to its bound, identically for every variant | semantic | default |
+| A-008 | Elite preservation | Preserve the global best-so-far in the returned result and trace; do not inject it back into the population, so the canonical GWO population update remains the baseline | semantic | default |
+| A-009 | CEC2022 development configuration | Use all 12 functions at D=10/20, bounds [-100,100], 200,000 FEs at D=10 and 1,000,000 at D=20; development defaults to 10 seeds, with distinct held-out confirmation seeds and 30 runs for formal reporting | semantic | default |
+| A-010 | MATLAB runtime | MATLAB R2025b is installed locally; the experiments used a six-worker local Processes pool | interface | user |
+| A-011 | Seed policy for the 14-version comparison | Reuse seeds 41–50 from the completed APL-v2 campaign for B0–B3; run only the 10 missing mechanism variants on the same seeds. No new seed IDs and no rerun of B0–B3. | semantic | user |
+| A-012 | Laplace fixed/stagnation trigger | L1 fires every 0.02 MaxFEs. Stagnation variants fire after 0.02 MaxFEs without global-best improvement, then use a 0.01 MaxFEs cooldown. Perturb the six worst-ranked wolves (20% of N=30), excluding the best three. | semantic | default |
+| A-013 | Noise scales and acceptance | L1/L2/L4/L5/L6/E1/H1 use scale b=0.01; L3 uses b=0.03. Gaussian uses standard normal with matching scale. Greedy acceptance requires improving the post-APL point; L6 adds the specified novelty condition. | semantic | user |
+| A-014 | Diversity metric | Per-dimension diversity is std(pop(:,d))/range(d), overall diversity is the mean across dimensions. L4 triggers when overall diversity < 0.1 of initial; L5 masks dimensions below 0.1 of their initial diversity. | semantic | user |
+| A-015 | DE crowding trigger | E3 targets only non-elite bottom-20%-fitness wolves whose nearest-neighbor distance is in the lowest 10th percentile of current population distances; this makes “crowded” deterministic for each generation. | semantic | default |
+| A-016 | Novelty acceptance | For L6, accept a non-improving perturbation only for a bottom-20%-ranked wolf, when candidate fitness is no worse than the current population median and normalized nearest-neighbor distance is at least 1.25 times that of the post-APL point. | semantic | user |
+| A-017 | DE direction and hybrid | E2/E3 use F=0.5 and two distinct randomly selected population members excluding the target. H1 uses the same stagnation trigger as L2, b=0.01 and adds the Laplace and DE directions before clipping. | semantic | user |
+| A-018 | Fixed schedule and event accounting | Fixed Laplace events use the same 0.02 MaxFEs interval as the stagnation threshold. Every perturbation candidate consumes one FE; all triggers/attempts/successes and 1%-FE diversity samples are recorded. | semantic | default |
+| A-019 | Reuse and missing-run matrix | Reuse B0–B3 rows for seeds 41–50 from `cec2022_apl_v2_6worker_dev`; execute only L1–L6/E1–E3/H1 for those same seed IDs. Validate the reused CSV has the complete 960 baseline rows before starting. | semantic | user |
+| A-020 | Fixed Laplace schedule | Trigger L1 whenever FE crosses each 0.02 MaxFEs interval; perform one perturbation pass over the preselected bottom-20% wolves (excluding top three). | semantic | default |
+| A-021 | Stagnation event semantics | Global stagnation is FE since last global-best improvement >= 0.02 MaxFEs; after a perturbation event, cooldown is 0.01 MaxFEs. Event/target set is frozen at generation start. | semantic | user/default |
+| A-022 | Laplace/Gaussian/de selection and acceptance | Apply one post-APL candidate per selected target, after the APL pattern/archive decision. Laplace/Gaussian/DE and hybrid use the fixed formulas from the plan; except L6, accept only if perturbation improves the post-APL candidate. | semantic | user |
+| A-023 | DE crowding predicate | E3 uses the intersection of bottom-20%-fitness non-elites and nearest-neighbor distances in the lowest 10th percentile of the population. | semantic | default |
+| A-024 | Diversity measure | For the new mechanism runs, use the plan's dimension-wise normalized standard deviation and mean across dimensions. This differs from the pairwise-distance diversity logged in the prior APL screen; do not compare the raw diversity values across these two definitions. | semantic | user |
+| A-025 | Partial-period trigger handling | If one generation crosses multiple scheduled thresholds, emit at most one perturbation event for that generation and advance the next threshold past the current FE. | semantic | default |
+| A-026 | Superseded 14-version scope | Earlier proposal for L/E/H mechanisms as one broad campaign is superseded by A-027's staged A0–A5 first phase. | semantic | user |
+| A-027 | Current staged plan scope | Run only stage-1 A0–A5: reuse A0 APL-weighted from seeds 41–50 and execute A1–A5 (DLM-1, DLM-2, BDL-rank, BDL-50%, PTL-P) on those same seeds. Defer combinations/parameter sweeps. | semantic | user |
+| A-028 | DLM distribution and targets | Use the DLMDGWO location-scale Laplace factor Laplace(0.6,0.3) elementwise with a random population difference; perturb the 6 worst wolves (ceil(0.2*(30−3))) after protecting the best 3. Choose distinct r1,r2 uniformly from the full population (they may include i), matching the source's stated r1 != r2. | semantic | user/default |
+| A-029 | DLM-2 sequence | After APL candidate Y, apply DLM-1; only if the first mutation improves Y, apply a second independent DLM to that accepted first candidate. Keep the first success if the second does not improve it; count both FEs separately. | semantic | default |
+| A-030 | BDL placement and dimension selection | Apply one randomly sampled nonrepeating dimension mask to each APL pattern candidate's displacement from Xi. BDL-rank uses K=max(1,ceil(D*rank/N)) with best rank 1; BDL-50 uses K=max(1,ceil(0.5D)); use the same mask across pattern 3/4/5 candidates for that individual. | semantic | user |
+| A-031 | PTL-P ranking and protection | Rank worst=1 and best=N; compute Wi=exp(-(rank−1)^2/(8πN^2))/(sqrt(2π)N), then Pi=(Wi−Wmin)/(Wmax−Wmin). Protect the three best wolves with P=0; count the Bernoulli draw as a selected update even if APL's five-exemplar gate later rejects it. | semantic | user/default |
+| A-032 | A0 diagnostic availability | Reuse A0 run-level quality/FE/runtime and previously logged summary diversity values. A0 lacks mean/std final population and 1%-FE dimension-wise diversity curves, so those cells remain missing; do not rerun A0 solely to fill them. | semantic | user |
+| A-033 | New stage-1 analysis | Merge A0 reused rows with A1–A5 new rows, compare same seeds, use paired Wilcoxon signed-rank and Holm correction over 24 function/dimension pairs per contrast; clearly label all results as seed-reused development screening. | semantic | user |
+| A-034 | Stage-2 combination selection | Based on stage-1 screening, run DLM-2 + ranking BDL and DLM-2 + fixed-50% BDL control on seeds 41–50; reuse A0–A5 rows and run only these two missing combinations. | semantic | default |
+
+## Notes
+
+- A-004 and A-005 define a concrete first prototype, not a novelty claim. The combination may prove redundant or weak; the ablation design must retain the standalone variants.
+- A-004 starts with tournament sizes [2,4] as a prototype setting; freeze it before confirmation runs and disclose any development tuning.
+- A-005's pattern evaluation spends up to three FEs for one wolf update. All comparisons must therefore use the same total FE cap, not the same generation count.
+- A-009 follows the official CEC2022 technical report's benchmark dimensions, bounds, and MaxFES schedule; the callback implementation itself is still external.
+- A-010 was exercised for the 48-task pilot and 960-task development campaign; the six-worker pool completed without task failures.
+- A-011 deliberately reuses seed-matched baseline rows, as requested. Because those seeds also informed the APL design choice, the 14-version analysis is exploratory rather than an independent confirmation.
+- A-015 sets a reproducible crowding cutoff because the design description did not specify a numeric threshold.
+- A-019 means the new output contains only missing-version rows; merged tables must label source as reused or newly executed.
+- A-024 keeps the old pairwise-distance diversity series separate from the dimension-wise diversity and recovery metrics in the mechanism sweep.
+- A-027 reuses seeds 41–50; do not use the previously proposed seed ranges 51–60, 61–70, or 101–130 in this stage.
+- A-032 preserves the no-rerun rule even though some diagnostics were not present in the old baseline output.
+- A-034 is a follow-on development screen only; it does not establish that any module or combination is confirmatory.

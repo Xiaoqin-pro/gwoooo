@@ -1,0 +1,5 @@
+Variant,AverageFunctionRank,BestMeanErrorCases
+gwo,3.29166666666667,1
+tournament,1.5,14
+adaptive,3.33333333333333,0
+combined,1.875,9
