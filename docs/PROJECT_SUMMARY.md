@@ -2,7 +2,7 @@
 
 **工作区：** 本项目目录（GitHub 仓库根目录）  
 **目标：** 以 CEC2022 开发筛选为基础，逐步形成有消融、有应用验证的改进 GWO 论文方案。  
-**状态：** APLPSO 迁移、DLM/BDL/PTL-P 单机制、DLM-2+BDL 组合及 FAD-GWO 首轮开发筛选均已完成；所有实验复用种子 41–50，旧代码和旧结果保留。
+**状态：** APLPSO 迁移、DLM/BDL/PTL-P 单机制、DLM-2+BDL 组合、FAD-GWO 首轮筛选及 FAD-1 个体级回退消融均已完成；所有新实验复用种子 41–50，旧结果保留。
 
 ## 1. 已整理的文献来源
 
@@ -23,7 +23,7 @@ CEC2022 函数包从组织者仓库取得，原文件与输入数据放在 `data
 
 为保留旧实现与旧结果，APLPSO 迁移版放在独立的 `code/gwo_optimize_apl.m`，没有覆盖 `code/gwo_optimize.m`。新版本为 `apl_v2`、`apl_weighted`、`tournament_apl_v2`、`tournament_apl_weighted`；baseline 和 tournament 用 `code/gwo_optimize_instrumented.m`，它只增加种群多样性轨迹、不改变旧更新规则。
 
-FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，并由 `code/run_fad_cec2022_dev.m` 只运行新 B5；B0–B4 从旧实验表复用。诊断分析入口为 `code/analyze_fad_cec2022.m`。
+FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，由 `code/run_fad_cec2022_dev.m` 运行 B5；B0–B4 从旧实验表复用。该入口也支持 `FAD1`，仅关闭个体级 GWO 回退、保留整代 FE 推进兜底，并只运行新 B6；B0–B5 从旧表复用。FAD-1 另存独立结果目录。分析入口分别为 `code/analyze_fad_cec2022.m` 和 `code/analyze_fad1_cec2022.m`。
 
 根据 APLPSO 原文核对：先随机抽取 5 个不同学习对象并按适应度排序；仅当五个对象都优于当前个体时进入 APL；`c1=1`，`cj=1/(j−1)−(FE/FEmax)/(j+1)`（j=2…5）；按 3、4、5 个对象依次提案，先改进就停止，否则从已评价候选档案中选最好的一个。加权 GWO 采用归一化的 `cj` 组合各领导狼的 GWO 提案，这是迁移设计，不是 APLPSO 原公式。APLPSO PDF 位于本地 `article/` 文献库，未纳入本仓库。
 
@@ -35,6 +35,8 @@ FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，并由 `code/run_fad_cec2022
 - `run_cec2022_tournament_confirmation.m`：新种子确认入口。用户要求暂停后，该任务只完成 F1、10 维的 60 条运行记录，未继续其他函数或维度。
 - `run_cec2022_apl_v2_development.m` / `analyze_cec2022_apl_v2.m`：六版本 APL 迁移筛选及 rank-sum 分析；新结果有独立目录。
 - `gwo_optimize_apl.m`：APL-v2/weighted 两个原型及其与 Tournament 的组合；`gwo_optimize.m` 保留旧实现。
+- `run_fad_cec2022_dev.m`：运行原 FAD B5 或无个体级回退的 FAD-1 B6；按 RunKey 跳过已完成记录。
+- `analyze_fad1_cec2022.m`：FAD-1 与 B0–B5 的配对统计、Holm 校正、收敛/多样性轨迹和诊断汇总。
 
 ## 3. 已完成的计算
 
@@ -99,6 +101,15 @@ FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，并由 `code/run_fad_cec2022
 - 门控通过率约16.7%，但门控失败回退的 GWO 更新消耗约45%的 FE 预算，是当前实现需要单独消融的行为。
 - 完整报告在 `results/fad_gwo_6worker_dev/FAD_REPORT.md`；逐维信用记忆与多样性诊断在对应 CSV。
 
+### FAD-1 个体级回退消融
+
+- 只关闭 APL 门控失败后的个体级 GWO 回退；APL、DLM、自适应维度反馈、恢复项及候选档案规则不变。原 FAD-0 的默认行为与旧结果保留；FAD-1 另存于 `results/fad1_no_individual_fallback_6worker_dev/`。
+- B0–B5 复用 seeds 41–50；新增 B6 运行 240 次，全部 `OK`，唯一 RunKey，FE 与 MaxFES 完全一致。没有新种子。
+- 七个版本按 24 个函数/维度设置计算的平均排名：B6 FAD-1 为 **1.667**，B4 为 2.958，B2 为 3.250，B5 FAD-0 为 4.333，B0 GWO 为 7.000。FAD-1 在 14/24 项取得最佳均值。
+- FAD-1 对 FAD-0 的配对结果为 199 胜、41 负；按对比内 24 项 Holm 校正后，14 项显著且都支持 FAD-1。对 B4 为 178 胜、62 负，5/24 项显著且均支持 FAD-1。FAD-1 相对 FAD-0、B4 的跨设置中位误差改善率分别为 30.56%、11.04%。
+- FAD-1 的个体级与整代兜底计数在 240 次运行中均为 0。旧 FAD-0 的历史计数未区分两类回退；其 `FallbackCount` 总量约占 FE 的 45.69%，只能作为合并统计。
+- 收敛与配对分析见 `results/fad1_no_individual_fallback_6worker_dev/FAD1_REPORT.md`。FAD-0 未保存 best-so-far 收敛曲线，本轮没有重跑 FAD-0；其最终误差和多样性轨迹可复用。
+
 ## 5. 实验边界
 
 - 开发筛选用了 10 个种子，不等于正式的 30 次确认实验。
@@ -109,11 +120,11 @@ FAD-GWO 第一版放在 `code/gwo_optimize_fad.m`，并由 `code/run_fad_cec2022
 
 ## 6. 建议的下一步方法与实验
 
-目前先按用户要求只复用 seeds 41–50，不启动新种子。FAD 尚不应进入确认阶段；下一步先审查门控失败回退及个体状态/维度反馈消融，继续复用现有基线并只跑缺失版本。
+目前仅完成了故障定位的第一项 FAD-1；不启动新种子，也未运行其余 FAD 消融。FAD-1 的表现支持继续按既定定位矩阵逐项检查恢复项、维度反馈和档案接受策略，再决定主算法及确认实验。
 
 更复杂的 DLM-S、参数敏感性、其他组合和 30 种子正式确认尚未运行。当前不应把开发筛选结果写成最终确认性结论。
 
 ## 7. 状态
 
 - 当前未运行 MATLAB 进程。
-- 所有 MATLAB worker/批处理目前均已结束；B5 FAD 首轮筛选完整。没有运行新种子；后续按计划先做同种子消融，再决定是否确认。
+- 所有 MATLAB worker/批处理目前均已结束；B5 FAD 与 B6 FAD-1 开发筛选完整。没有运行新种子；FAD-2 及后续故障定位实验尚未启动。

@@ -27,6 +27,20 @@ Run `analyze_cec2022_development` for the legacy screen, or `analyze_cec2022_apl
 
 `gwo_optimize` expects row-vector bounds and an objective callback that accepts one 1-by-D row vector. The repository includes the unmodified CEC2022 reference MEX/source and input data; the optimization methods are maintained separately under `code/`.
 
+## FAD-1 fallback ablation
+
+The FAD runner supports an isolated FAD-1 configuration that disables only the individual GWO fallback after an APL gate failure. It keeps the generation-level FE-progress fallback and all other FAD mechanisms.
+
+From the repository root in MATLAB:
+
+```matlab
+addpath('code');
+run_fad_cec2022_dev([],41:50,6,1:12,[10 20],'FAD1');
+analyze_fad1_cec2022();
+```
+
+The run is checkpointed in `results/fad1_no_individual_fallback_6worker_dev/`; completed RunKeys are skipped on resume. B0–B5 data are reused. This screen completed 240/240 new runs with exact FE budgets and no fallback calls. Across the seven-variant comparison its average function rank is 1.667; it remains a development result on the reused seeds 41–50, not an independent confirmation. See `../results/fad1_no_individual_fallback_6worker_dev/FAD1_REPORT.md` for the analysis and limits.
+
 ## Current status
 
-The legacy 960-run screen, APL migration 1440-run screen, staged A0–A7 experiment, and FAD-GWO B5 screen completed on six MATLAB workers. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` for design decisions and `implement-stage/BUILD_NOTE.md` for follow-up work.
+The legacy 960-run screen, APL migration 1440-run screen, staged A0–A7 experiment, FAD-GWO B5 screen, and FAD-1 B6 fallback ablation completed on six MATLAB workers. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` for design decisions and `implement-stage/BUILD_NOTE.md` for earlier implementation notes.

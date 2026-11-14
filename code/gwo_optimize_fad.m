@@ -25,9 +25,10 @@ successMemory=zeros(1,D); failureMemory=zeros(1,D);
 selectionCount=zeros(1,D); selectionOpportunity=0; totalK=0; kCount=0;
 traceFE=ceil((1:100)'*opts.MaxFEs/100);
 traceDiv=nan(100,1); traceState=nan(100,1); traceK=nan(100,1);
-traceDLMtargets=nan(100,1); sampleIndex=1;
+traceDLMtargets=nan(100,1); traceBest=nan(100,1); sampleIndex=1;
 gen=0; aplGateAttempts=0; aplGatePasses=0; patternEval=zeros(1,3);
-patternSuccess=zeros(1,3); fallbackCount=0; dlmTargetCount=0;
+patternSuccess=zeros(1,3); fallbackCount=0; individualFallbackCount=0;
+generationFallbackCount=0; dlmTargetCount=0;
 dlmAttemptCount=0; dlmSuccessCount=0; dlmSecondCount=0; dlmSecondSuccessCount=0;
 targetCountHistory=[];
 
@@ -104,7 +105,7 @@ while FEs<opts.MaxFEs
                 [fy,j]=min(archiveFit(live)); y=archiveX(live(j),:);
             end
             didUpdate=true;
-        elseif state(i)>=median(state)
+        elseif ~opts.DisableIndividualFallback && state(i)>=median(state)
             % High-stagnation APL gate fallback: ordinary three-leader GWO update,
             % restricted by the same dimension mask. Standard GWO applies this move.
             guidesGWO=X(bestOrder(1:3),:);
@@ -117,6 +118,7 @@ while FEs<opts.MaxFEs
                     oldX,candidate,oldFit,cf,mask,IQR,opts.Epsilon);
                 if cf<gBest, gBest=cf; gBestX=candidate; end
                 y=candidate; fy=cf; didUpdate=true; fallbackCount=fallbackCount+1;
+                individualFallbackCount=individualFallbackCount+1;
             end
         end
 
@@ -174,7 +176,7 @@ while FEs<opts.MaxFEs
         if cf<fit(i), nextC(i)=0; else, nextC(i)=c(i)+1; end
         generationSelections=generationSelections+double(mask);
         selectionOpportunity=selectionOpportunity+1; generationK=generationK+K; generationKCount=generationKCount+1;
-        fallbackCount=fallbackCount+1;
+        fallbackCount=fallbackCount+1; generationFallbackCount=generationFallbackCount+1;
     end
 
     % Aggregate feedback once per generation so wolf order does not affect Q_j.
@@ -188,6 +190,7 @@ while FEs<opts.MaxFEs
         traceState(sampleIndex)=mean(state);
         traceK(sampleIndex)=generationK/max(generationKCount,1);
         traceDLMtargets(sampleIndex)=generationDLMtargets;
+        traceBest(sampleIndex)=gBest;
         sampleIndex=sampleIndex+1;
     end
 end
@@ -196,6 +199,7 @@ if sampleIndex<=100
     traceState(sampleIndex:end)=mean(state);
     traceK(sampleIndex:end)=totalK/max(kCount,1);
     traceDLMtargets(sampleIndex:end)=generationDLMtargets;
+    traceBest(sampleIndex:end)=gBest;
 end
 finalDiv=dimension_diversity(X,span);
 Qfinal=(opts.BetaPrior+successMemory)./(2*opts.BetaPrior+successMemory+failureMemory);
@@ -204,7 +208,8 @@ Cfinal(good)=clip01(1-finalDiv(good)./(D0(good)+opts.Epsilon));
 result=struct('BestPosition',gBestX,'BestFitness',gBest,'MeanFitness',mean(fit), ...
     'StdFitness',std(fit),'FEs',FEs,'Generations',gen,'Seed',opts.Seed, ...
     'Options',opts,'Trace',struct('FE',traceFE,'Diversity',traceDiv, ...
-    'MeanState',traceState,'MeanK',traceK,'DLMTargetCount',traceDLMtargets));
+    'MeanState',traceState,'MeanK',traceK,'DLMTargetCount',traceDLMtargets, ...
+    'BestFitness',traceBest));
 result.Diagnostics=struct('MeanFinalState',mean(state),'MaxFinalState',max(state), ...
     'MeanK',totalK/max(kCount,1),'DimensionSelectionCount',selectionCount, ...
     'DimensionSelectionRate',selectionCount/max(selectionOpportunity,1), ...
@@ -218,7 +223,9 @@ result.Diagnostics=struct('MeanFinalState',mean(state),'MaxFinalState',max(state
     'DLMFirstSuccessRate',dlmSuccessCount/max(dlmAttemptCount,1), ...
     'DLMSecondAttempts',dlmSecondCount,'DLMSecondSuccesses',dlmSecondSuccessCount, ...
     'DLMSecondSuccessRate',dlmSecondSuccessCount/max(dlmSecondCount,1), ...
-    'FallbackCount',fallbackCount,'DimensionMemoryUpdates',selectionOpportunity);
+    'FallbackCount',fallbackCount,'IndividualFallbackCount',individualFallbackCount, ...
+    'GenerationFallbackCount',generationFallbackCount, ...
+    'DimensionMemoryUpdates',selectionOpportunity);
 end
 function opts=defaults(opts)
 if nargin<1 || isempty(opts), opts=struct(); end
@@ -227,7 +234,8 @@ def=struct('PopulationSize',30,'Seed',1,'EliteCount',3, ...
     'MemoryForgetting',0.95,'UniformFloor',0.1,'DLMMinFraction',0.05, ...
     'DLMMaxFraction',0.20,'LaplaceMu',0.6,'LaplaceSigmaMin',0.3, ...
     'LaplaceSigmaMax',0.6,'RecoveryScale',0.03,'RecoveryExponent',1, ...
-    'BetaPrior',1,'Epsilon',1e-12,'TargetMaskEliteCount',3);
+    'BetaPrior',1,'Epsilon',1e-12,'TargetMaskEliteCount',3, ...
+    'DisableIndividualFallback',false);
 names=fieldnames(def);
 for k=1:numel(names)
     if ~isfield(opts,names{k}) || isempty(opts.(names{k}))

@@ -1,13 +1,22 @@
-function merged=run_fad_cec2022_dev(outputDir,seeds,workerCount,functionIds,dims)
-% Run only the new B5 FAD-GWO algorithm; reuse B0-B4 from seeds 41:50.
+function merged=run_fad_cec2022_dev(outputDir,seeds,workerCount,functionIds,dims,variant)
+% Run FAD (B5) or FAD-1 without individual GWO fallback (B6).
+if nargin<6 || isempty(variant), variant='FAD'; end
+variant=upper(string(variant));
+if ~ismember(variant,["FAD","FAD1"]), error('variant must be FAD or FAD1.'); end
 if nargin<1 || isempty(outputDir)
-    outputDir=fullfile(gwo_project_root(),'results','fad_gwo_6worker_dev');
+    if variant=="FAD"
+        outputDir=fullfile(gwo_project_root(),'results','fad_gwo_6worker_dev');
+    else
+        outputDir=fullfile(gwo_project_root(),'results','fad1_no_individual_fallback_6worker_dev');
+    end
 end
 if nargin<2 || isempty(seeds), seeds=41:50; end
 if nargin<3 || isempty(workerCount), workerCount=6; end
 if nargin<4 || isempty(functionIds), functionIds=1:12; end
 if nargin<5 || isempty(dims), dims=[10 20]; end
 root=gwo_project_root(); codeRoot=fileparts(mfilename('fullpath'));
+if variant=="FAD", algorithm='B5_FAD'; runTag='B5_FAD';
+else, algorithm='B6_FAD1_NoIndFallback'; runTag='B6_FAD1'; end
 benchRoot=fullfile(root,'data','CEC2022_reference');
 if ~isfolder(benchRoot) || ~isfile(fullfile(benchRoot,'cec22_test_func.mexw64'))
     error('CEC2022 reference MEX is missing from data/CEC2022_reference.');
@@ -19,25 +28,48 @@ if ~isfile(fullfile(root,'results','cec2022_apl_v2_6worker_dev','cec2022_develop
     error('One or more reusable B0-B4 baseline result files are missing.');
 end
 base=load_fad_baselines(root,seeds);
-rawCsv=fullfile(outputDir,'B5_FAD_new_runs.csv');
-mergedCsv=fullfile(outputDir,'B0_B5_merged.csv');
-traceCsv=fullfile(outputDir,'FAD_diversity_trace_1pct.csv');
-dimCsv=fullfile(outputDir,'FAD_dimension_diagnostics.csv');
+if variant=="FAD"
+    rawCsv=fullfile(outputDir,'B5_FAD_new_runs.csv');
+    mergedCsv=fullfile(outputDir,'B0_B5_merged.csv');
+    traceCsv=fullfile(outputDir,'FAD_diversity_trace_1pct.csv');
+    dimCsv=fullfile(outputDir,'FAD_dimension_diagnostics.csv');
+else
+    fad0=readtable(fullfile(root,'results','fad_gwo_6worker_dev','B5_FAD_new_runs.csv'),'TextType','string');
+    fad0=fad0(ismember(fad0.Seed,seeds),:);
+    fad0=align_diagnostic_columns(fad0);
+    fad0.Algorithm(:)="B5_FAD"; fad0.Source(:)="reused";
+    base=align_diagnostic_columns(base);
+    base=[base;fad0];
+    rawCsv=fullfile(outputDir,'B6_FAD1_new_runs.csv');
+    mergedCsv=fullfile(outputDir,'B0_B6_merged.csv');
+    traceCsv=fullfile(outputDir,'FAD1_search_trace_1pct.csv');
+    dimCsv=fullfile(outputDir,'FAD1_dimension_diagnostics.csv');
+end
 diagNames={'MeanFinalState','MaxFinalState','MeanK','DLMSelectedMean','APLGatePassRate', ...
     'Pattern3Evaluations','Pattern4Evaluations','Pattern5Evaluations', ...
     'Pattern3Successes','Pattern4Successes','Pattern5Successes', ...
     'DLM1Attempts','DLM1Successes','DLM1SuccessRate','DLM2Attempts', ...
-    'DLM2Successes','DLM2SuccessRate','FallbackCount','DimensionMemoryUpdates'};
-traceNames=arrayfun(@(k)sprintf('FEpct_%02d',k),1:100,'UniformOutput',false);
+    'DLM2Successes','DLM2SuccessRate','FallbackCount', ...
+    'IndividualFallbackCount','GenerationFallbackCount','DimensionMemoryUpdates'};
+if variant=="FAD"
+    traceNames=arrayfun(@(k)sprintf('FEpct_%02d',k),1:100,'UniformOutput',false);
+    traceWidth=105;
+else
+    traceNames=[arrayfun(@(k)sprintf('BestFEpct_%02d',k),1:100,'UniformOutput',false), ...
+        arrayfun(@(k)sprintf('DiversityFEpct_%02d',k),1:100,'UniformOutput',false)];
+    traceWidth=205;
+end
 diagNames={'MeanFinalState','MaxFinalState','MeanK','DLMSelectedMean','APLGatePassRate', ...
     'Pattern3Evaluations','Pattern4Evaluations','Pattern5Evaluations', ...
     'Pattern3Successes','Pattern4Successes','Pattern5Successes', ...
     'DLM1Attempts','DLM1Successes','DLM1SuccessRate','DLM2Attempts', ...
-    'DLM2Successes','DLM2SuccessRate','FallbackCount','DimensionMemoryUpdates'};
+    'DLM2Successes','DLM2SuccessRate','FallbackCount', ...
+    'IndividualFallbackCount','GenerationFallbackCount','DimensionMemoryUpdates'};
 allNames=[{'Algorithm','Function','Dimension','Seed','BestFitness','MeanFitness', ...
     'StdFitness','FEs','Generations','Seconds','Status','RunKey','Source'},diagNames];
 if isfile(rawCsv)
     newRows=readtable(rawCsv,'TextType','string');
+    newRows=align_diagnostic_columns(newRows);
     traceRows=readtable(traceCsv,'TextType','string');
     if isfile(dimCsv)
         try
@@ -69,34 +101,42 @@ for dim=dims
     if dim==10, maxFEs=200000; else, maxFEs=1000000; end
     lb=-100*ones(1,dim); ub=100*ones(1,dim);
     for fun=functionIds
-        keys=arrayfun(@(s)sprintf('F%02d_D%02d_S%04d_B5_FAD',fun,dim,s),seeds,'UniformOutput',false)';
+        keys=arrayfun(@(s)sprintf('F%02d_D%02d_S%04d_%s',fun,dim,s,runTag),seeds,'UniformOutput',false)';
         if isempty(newRows), pending=1:numel(seeds);
         else, pending=find(~ismember(string(keys),newRows.RunKey(newRows.Status=="OK"))); end
         if isempty(pending)
-            fprintf('Skip completed FAD block F%d D=%d.\n',fun,dim); continue;
+            fprintf('Skip completed %s block F%d D=%d.\n',algorithm,fun,dim); continue;
         end
         runCells=cell(numel(pending),numel(allNames));
-        traceCells=cell(numel(pending),105);
+        traceCells=cell(numel(pending),traceWidth);
         dimData=cell(numel(pending),1);
         parfor q=1:numel(pending)
             sIndex=pending(q); seed=seeds(sIndex); key=keys{sIndex}; t=tic;
             try
                 objective=@(x)cec2022_objective(x,fun);
-                opts=struct('PopulationSize',30,'MaxFEs',maxFEs,'Seed',seed);
+                opts=struct('PopulationSize',30,'MaxFEs',maxFEs,'Seed',seed, ...
+                    'DisableIndividualFallback',variant=="FAD1");
                 out=gwo_optimize_fad(objective,lb,ub,opts);
                 dg=out.Diagnostics;
-                values={ 'B5_FAD',fun,dim,seed,out.BestFitness,out.MeanFitness, ...
+                values={char(algorithm),fun,dim,seed,out.BestFitness,out.MeanFitness, ...
                     out.StdFitness,out.FEs,out.Generations,toc(t),'OK',key,'new', ...
                     dg.MeanFinalState,dg.MaxFinalState,dg.MeanK,dg.DLMSelectedMean, ...
                     dg.APLGatePassRate,dg.PatternEvaluations(1),dg.PatternEvaluations(2), ...
                     dg.PatternEvaluations(3),dg.PatternSuccesses(1),dg.PatternSuccesses(2), ...
                     dg.PatternSuccesses(3),dg.DLMAttempts,dg.DLMSuccesses,dg.DLMFirstSuccessRate, ...
                     dg.DLMSecondAttempts,dg.DLMSecondSuccesses,dg.DLMSecondSuccessRate, ...
-                    dg.FallbackCount,dg.DimensionMemoryUpdates};
+                    dg.FallbackCount,dg.IndividualFallbackCount, ...
+                    dg.GenerationFallbackCount,dg.DimensionMemoryUpdates};
                 runCells(q,:)=values;
-                traceCells(q,:)=[{'B5_FAD',fun,dim,seed,key},num2cell(out.Trace.Diversity(:)')];
+                if variant=="FAD"
+                    traceValues=num2cell(out.Trace.Diversity(:)');
+                else
+                    traceValues=[num2cell(out.Trace.BestFitness(:)'), ...
+                        num2cell(out.Trace.Diversity(:)')];
+                end
+                traceCells(q,:)=[{char(algorithm),fun,dim,seed,key},traceValues];
                 dd=dg.DimensionSuccessRate;
-                dimData{q}=table(repmat("B5_FAD",dim,1),repmat(string(key),dim,1),(1:dim)', ...
+                dimData{q}=table(repmat(string(algorithm),dim,1),repmat(string(key),dim,1),(1:dim)', ...
                     repmat(fun,dim,1),repmat(dim,dim,1),repmat(seed,dim,1), ...
                     dg.DimensionSelectionCount(:),dg.DimensionSelectionRate(:), ...
                     dg.DimensionSuccessCredit(:),dg.DimensionFailureCredit(:),dd(:), ...
@@ -106,9 +146,9 @@ for dim=dims
                     'Seed','SelectionCount','SelectionRate','SuccessCredit','FailureCredit', ...
                     'SuccessRate','Collapse','InitialDiversity','FinalDiversity'});
             catch ME
-                runCells(q,:)=[{'B5_FAD',fun,dim,seed,NaN,NaN,NaN,NaN,NaN,toc(t), ...
+                runCells(q,:)=[{char(algorithm),fun,dim,seed,NaN,NaN,NaN,NaN,NaN,toc(t), ...
                     ME.message,key,'new'},num2cell(nan(1,numel(diagNames)))];
-                traceCells(q,:)=[{'B5_FAD',fun,dim,seed,key},num2cell(nan(1,100))];
+                traceCells(q,:)=[{char(algorithm),fun,dim,seed,key},num2cell(nan(1,traceWidth-5))];
                 dimData{q}=table();
             end
         end
@@ -135,8 +175,8 @@ for dim=dims
         writetable(newRows,rawCsv); writetable(merged,mergedCsv);
         writetable(traceRows,traceCsv); writetable(dimRows,dimCsv);
         save(fullfile(outputDir,'FAD_checkpoint.mat'),'base','newRows','merged','traceRows','dimRows','seeds');
-        fprintf('Checkpoint: F%d D=%d; B5 completed %d/%d, reused B0-B4 rows=%d.\n', ...
-            fun,dim,height(newRows),totalExpected,height(base));
+        fprintf('Checkpoint: F%d D=%d; %s completed %d/%d, reused baseline rows=%d.\n', ...
+            fun,dim,algorithm,height(newRows),totalExpected,height(base));
     end
 end
 results=merged;
@@ -154,7 +194,7 @@ b4=map_stage(s2(s2.Algorithm=="A7_DLM2_BDL50",:),'B4_APL_DLM2_BDL50',seeds);
 base=[b0;b1;b2;b3;b4];
 for name=unique(base.Algorithm)'
     rows=base(base.Algorithm==name,:);
-    if height(rows)~=240 || any(rows.Status~="OK")
+    if height(rows)~=24*numel(seeds) || any(rows.Status~="OK")
         error('Reusable baseline %s is incomplete.',name);
     end
     expected=zeros(height(rows),1); expected(rows.Dimension==10)=200000; expected(rows.Dimension==20)=1000000;
@@ -186,6 +226,23 @@ diagNames={'MeanFinalState','MaxFinalState','MeanK','DLMSelectedMean','APLGatePa
     'Pattern3Evaluations','Pattern4Evaluations','Pattern5Evaluations', ...
     'Pattern3Successes','Pattern4Successes','Pattern5Successes','DLM1Attempts', ...
     'DLM1Successes','DLM1SuccessRate','DLM2Attempts','DLM2Successes', ...
-    'DLM2SuccessRate','FallbackCount','DimensionMemoryUpdates'};
+    'DLM2SuccessRate','FallbackCount','IndividualFallbackCount', ...
+    'GenerationFallbackCount','DimensionMemoryUpdates'};
 for k=1:numel(diagNames), out.(diagNames{k})=nan(n,1); end
+end
+
+function T=align_diagnostic_columns(T)
+diagNames={'MeanFinalState','MaxFinalState','MeanK','DLMSelectedMean','APLGatePassRate', ...
+    'Pattern3Evaluations','Pattern4Evaluations','Pattern5Evaluations', ...
+    'Pattern3Successes','Pattern4Successes','Pattern5Successes', ...
+    'DLM1Attempts','DLM1Successes','DLM1SuccessRate','DLM2Attempts', ...
+    'DLM2Successes','DLM2SuccessRate','FallbackCount','IndividualFallbackCount', ...
+    'GenerationFallbackCount','DimensionMemoryUpdates'};
+for k=1:numel(diagNames)
+    if ~ismember(diagNames{k},T.Properties.VariableNames)
+        T.(diagNames{k})=nan(height(T),1);
+    end
+end
+baseNames=setdiff(T.Properties.VariableNames,diagNames,'stable');
+T=T(:,[baseNames,diagNames]);
 end
