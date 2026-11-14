@@ -12,6 +12,7 @@
 | F7 | Six-version APL screen | CEC2022 D=10/20, 10 fresh seeds, 6 workers; inspect FE caps and diagnostic CSV | MUST | Passed: 1440 runs, no failures |
 | F8 | A0–A5 single-mechanism screen | Reuse A0 seeds 41–50; run only DLM1/2, BDL-rank/50, PTL-P | MUST | Passed: 1200 new runs, 0 failures |
 | F9 | DLM2 + BDL combinations | Reuse A0–A5; run only rank-BDL and fixed-50% combinations | MUST | Passed: 480 new runs, 0 failures |
+| F10 | FAD-GWO first full version | Reuse B0–B4; run B5 on CEC2022 D=10/20, seeds 41–50; check FEs and diagnostics | MUST | Passed: 240 new runs, 0 failures |
 
 ## Run record
 - 2026-11-13: Inspected the workspace; it contains the separate `article/` literature library and no pre-existing project source repository.
@@ -24,10 +25,12 @@
 - 2026-11-14: APL v2 and weighted APL lead the six-version development screen; tournament+APL variants rank below their corresponding APL-only variants. Rank-sum results are unadjusted as requested.
 - 2026-11-14: Stage 1 reused A0 and completed A1–A5 (1200 new runs, same seeds 41–50); report: `../../results/cec2022_stage1_missing_6worker/STAGE1_A0_A5_REPORT.md`.
 - 2026-11-14: Stage 2 reused A0–A5 and completed A6/A7 (480 new runs, same seeds 41–50); report: `../../results/cec2022_stage2_combo_6worker/STAGE2_A0_A7_REPORT.md`.
+- 2026-11-14: FAD-GWO B5 completed on seeds 41–50; 240 new runs, 0 failures, B0–B4 reused. Report: `../../results/fad_gwo_6worker_dev/FAD_REPORT.md`.
 
 ## Deferred
 - No new seed confirmation was run because the current instruction is to reuse seeds 41–50 and execute only missing designs.
 - Additional combination variants and sensitivity sweeps remain unrun; Stage 2 tested only the two preselected DLM2+BDL combinations.
+- FAD ablations (individual state, dimension success memory, diversity feedback, K schedule, and fallback) remain unrun; FAD's current fallback accounts for a large share of FE.
 - CEC2022 early-termination-at-1e-8 accounting required for any official competition-style score; development screening ran all trials to MaxFES.
 - Laplace perturbation until the core combination is benchmarked.
 

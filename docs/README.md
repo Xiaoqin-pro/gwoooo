@@ -29,4 +29,4 @@ Run `analyze_cec2022_development` for the legacy screen, or `analyze_cec2022_apl
 
 ## Current status
 
-The legacy 960-run screen, APL migration 1440-run screen, and staged A0–A7 experiment completed on six MATLAB workers. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` for design decisions and `implement-stage/BUILD_NOTE.md` for follow-up work.
+The legacy 960-run screen, APL migration 1440-run screen, staged A0–A7 experiment, and FAD-GWO B5 screen completed on six MATLAB workers. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` for design decisions and `implement-stage/BUILD_NOTE.md` for follow-up work.
