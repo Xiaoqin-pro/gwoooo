@@ -25,7 +25,7 @@ To run a saved CEC2022 screening entry point, the runner accepts a six-worker lo
 
 ## Current research stage
 
-The project now has two separate lines. The established FAD branch retains its original code and results; FAD-1 removes only the individual GWO fallback. A new FCLC-GWO branch tests sparse, follower-specific counterfactual leader credit without importing FAD/APL/DLM/BDL. Its first-stage 10-seed screen is in `results/fclc_stage1_6worker_dev/`; fixed alpha-dominant weights ranked first, so the FCLC mechanism has not yet earned a larger benchmark campaign. All new experiments reused seed IDs 41–50 and are development screens, not independent confirmation. Result files and run manifests are under `results/`.
+The active research direction is the APL-GWO branch. Its latest CEC2022 screen compares conditional DLM-2 recovery with two acceptance rules: `A8_APL_HandoffArchive` accepts the best evaluated APL candidate when none improves the current wolf, while `A9_APL_HandoffStrict` retains the current wolf before recovery. The 10-seed screen is complete in `results/apl_handoff_6worker_dev/`; A9 ranks first overall, with a dimension-dependent result that is documented in the report. FAD and FCLC remain separate historical branches with their code and results preserved. These are development screens on reused seed IDs 41–50, not independent confirmation. Result files and run manifests are under `results/`.
 
 ## Benchmark source
 

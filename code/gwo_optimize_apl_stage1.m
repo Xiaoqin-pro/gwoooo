@@ -1,5 +1,5 @@
 function result = gwo_optimize_apl_stage1(objective,lb,ub,opts)
-% APL-weighted GWO plus one stage-1 mechanism: dlm1, dlm2, bdl_rank, bdl50, or ptlp.
+% APL-weighted GWO with screened mechanisms and conditional handoff variants.
 opts=defaults(opts); lb=double(lb(:)'); ub=double(ub(:)');
 if ~isa(objective,'function_handle'), error('Objective must be a function handle.'); end
 if numel(lb)~=numel(ub) || any(~isfinite(lb)) || any(~isfinite(ub)) || any(ub<=lb)
@@ -9,8 +9,11 @@ if opts.PopulationSize<6 || opts.MaxFEs<opts.PopulationSize
     error('Require PopulationSize >= 6 and MaxFEs >= PopulationSize.');
 end
 variant=lower(char(opts.Variant));
-valid={'dlm1','dlm2','bdl_rank','bdl50','ptlp','dlm2_bdl_rank','dlm2_bdl50'};
+valid={'dlm1','dlm2','bdl_rank','bdl50','ptlp','dlm2_bdl_rank','dlm2_bdl50', ...
+    'apl_handoff_archive','apl_handoff_strict'};
 if ~any(strcmp(variant,valid)), error('Unknown stage-1 variant: %s',variant); end
+handoffVariant=any(strcmp(variant,{'apl_handoff_archive','apl_handoff_strict'}));
+strictHandoff=strcmp(variant,'apl_handoff_strict');
 
 rng(opts.Seed,'twister');
 n=opts.PopulationSize; d=numel(lb); span=ub-lb;
@@ -23,6 +26,7 @@ end
 initialDiv=mean(dimension_diversity(pop,span));
 traceFE=ceil((1:100)'*opts.MaxFEs/100); traceDiv=nan(100,1); nextSample=1;
 generation=0; patternEval=zeros(1,3); patternSuccess=zeros(1,3); archiveChoice=0;
+gateAttempts=0; gatePasses=0; handoffOpportunities=0; handoffTriggers=0; strictRetains=0;
 bdlKSum=0; bdlCount=0; ptlpSelected=0; ptlpOpportunities=0;
 dlmCount=0; dlmSuccess=0; doubleAttempt=0; doubleSuccess=0; fallback=0;
 recoverySum=0; recoveryEvents=0;
@@ -39,7 +43,8 @@ while fes<opts.MaxFEs
     a=2-2*min(fes/opts.MaxFEs,1);
     nextPop=pop; nextFit=fit;
     dlmTargets=false(n,1);
-    if any(strcmp(variant,{'dlm1','dlm2','dlm2_bdl_rank','dlm2_bdl50'}))
+    if any(strcmp(variant,{'dlm1','dlm2','dlm2_bdl_rank','dlm2_bdl50', ...
+            'apl_handoff_archive','apl_handoff_strict'}))
         number=ceil(opts.DLMFraction*(n-opts.EliteCount));
         dlmTargets(bestOrder(end-number+1:end))=true;
         dlmTargets(bestOrder(1:opts.EliteCount))=false;
@@ -52,18 +57,22 @@ while fes<opts.MaxFEs
             ptlpSelected=ptlpSelected+1;
         end
 
+        gateAttempts=gateAttempts+1; aplImproved=false; aplGatePassed=false;
+        mask=true(1,d);
         pool=[1:i-1,i+1:n]; guides=pool(randperm(numel(pool),5));
         [~,gOrder]=sort(fit(guides),'ascend'); guides=guides(gOrder);
         y=pop(i,:); fy=fit(i);
         if all(fit(guides)<fit(i))
+            gatePasses=gatePasses+1; aplGatePassed=true;
             sharedR1=rand(5,d); sharedR2=rand(5,d);
             ratio=min(fes/opts.MaxFEs,1);
             c=[1,1-ratio/3,1/2-ratio/4,1/3-ratio/5,1/4-ratio/6];
             if any(strcmp(variant,{'bdl_rank','dlm2_bdl_rank'}))
                 K=max(1,ceil(d*rankBest(i)/n)); mask=sample_mask(d,K);
                 bdlKSum=bdlKSum+K; bdlCount=bdlCount+1;
-            elseif any(strcmp(variant,{'bdl50','dlm2_bdl50'}))
-                K=max(1,ceil(0.5*d)); mask=sample_mask(d,K);
+            elseif any(strcmp(variant,{'bdl50','dlm2_bdl50', ...
+                    'apl_handoff_archive','apl_handoff_strict'}))
+                K=max(1,ceil(opts.BDLFraction*d)); mask=sample_mask(d,K);
                 bdlKSum=bdlKSum+K; bdlCount=bdlCount+1;
             else
                 mask=true(1,d);
@@ -81,27 +90,52 @@ while fes<opts.MaxFEs
                 archiveX(m,:)=candidate; archiveFit(m)=cf;
                 if cf<bestFit, bestFit=cf; bestX=candidate; lastImproveFE=fes; end
                 if cf<fit(i)
-                    y=candidate; fy=cf; improved=true; patternSuccess(m)=patternSuccess(m)+1;
+                    y=candidate; fy=cf; improved=true; aplImproved=true;
+                    patternSuccess(m)=patternSuccess(m)+1;
                     break;
                 end
             end
             if ~improved
-                live=find(isfinite(archiveFit));
-                [fy,j]=min(archiveFit(live)); y=archiveX(live(j),:); archiveChoice=archiveChoice+1;
+                if strictHandoff
+                    strictRetains=strictRetains+1;
+                else
+                    live=find(isfinite(archiveFit));
+                    [fy,j]=min(archiveFit(live)); y=archiveX(live(j),:);
+                    archiveChoice=archiveChoice+1;
+                end
             end
         end
 
-        if dlmTargets(i) && fes<opts.MaxFEs
+        runDLM=dlmTargets(i);
+        recoveryMask=true(1,d);
+        if handoffVariant
+            handoffOpportunities=handoffOpportunities+double(dlmTargets(i));
+            runDLM=dlmTargets(i) && ~aplImproved;
+            if runDLM
+                if aplGatePassed
+                    recoveryMask=mask;
+                else
+                    K=max(1,ceil(opts.BDLFraction*d));
+                    recoveryMask=sample_mask(d,K);
+                    bdlKSum=bdlKSum+K; bdlCount=bdlCount+1;
+                end
+            end
+        end
+        if runDLM && fes<opts.MaxFEs
+            if handoffVariant, handoffTriggers=handoffTriggers+1; end
             [r1,r2]=select_difference_pair(n);
             step=laplace_factor(1,d,opts.LaplaceMu,opts.LaplaceSigma).*(pop(r1,:)-pop(r2,:));
+            if handoffVariant, step=step.*recoveryMask; end
             candidate=min(max(y+step,lb),ub);
             cf=evaluate(objective,candidate); fes=fes+1; dlmCount=dlmCount+1;
             if cf<bestFit, bestFit=cf; bestX=candidate; lastImproveFE=fes; end
             if cf<fy
                 y=candidate; fy=cf; dlmSuccess=dlmSuccess+1;
-                if any(strcmp(variant,{'dlm2','dlm2_bdl_rank','dlm2_bdl50'})) && fes<opts.MaxFEs
+                if any(strcmp(variant,{'dlm2','dlm2_bdl_rank','dlm2_bdl50', ...
+                        'apl_handoff_archive','apl_handoff_strict'})) && fes<opts.MaxFEs
                     [r1,r2]=select_difference_pair(n);
                     step2=laplace_factor(1,d,opts.LaplaceMu,opts.LaplaceSigma).*(pop(r1,:)-pop(r2,:));
+                    if handoffVariant, step2=step2.*recoveryMask; end
                     candidate2=min(max(y+step2,lb),ub);
                     cf2=evaluate(objective,candidate2); fes=fes+1; doubleAttempt=doubleAttempt+1;
                     if cf2<bestFit, bestFit=cf2; bestX=candidate2; lastImproveFE=fes; end
@@ -135,7 +169,10 @@ if nextSample<=100, traceDiv(nextSample:end)=mean(dimension_diversity(pop,span))
 result=struct('BestPosition',bestX,'BestFitness',bestFit,'MeanFitness',mean(fit), ...
     'StdFitness',std(fit),'FEs',fes,'Generations',generation,'Variant',variant, ...
     'Seed',opts.Seed,'Options',opts,'Trace',struct('DiversityFE',traceFE,'Diversity',traceDiv));
-result.Diagnostics=struct('PatternEvaluations',patternEval,'PatternSuccesses',patternSuccess, ...
+result.Diagnostics=struct('APLGateAttempts',gateAttempts,'APLGatePasses',gatePasses, ...
+    'APLGatePassRate',gatePasses/max(gateAttempts,1),'HandoffOpportunities',handoffOpportunities, ...
+    'HandoffTriggers',handoffTriggers,'StrictRetains',strictRetains, ...
+    'PatternEvaluations',patternEval,'PatternSuccesses',patternSuccess, ...
     'ArchiveSelections',archiveChoice,'BDLMeanK',bdlKSum/max(bdlCount,1), ...
     'PTLPUpdateRate',ptlpSelected/max(ptlpOpportunities,1), ...
     'DLMCount',dlmCount,'DLMSuccess',dlmSuccess,'DoubleDLMCount',doubleAttempt, ...
@@ -148,7 +185,8 @@ end
 function opts=defaults(opts)
 if nargin<1 || isempty(opts), opts=struct(); end
 def=struct('PopulationSize',30,'Seed',1,'Variant','dlm1', ...
-    'DLMFraction',0.20,'EliteCount',3,'LaplaceMu',0.6,'LaplaceSigma',0.3);
+    'DLMFraction',0.20,'EliteCount',3,'LaplaceMu',0.6,'LaplaceSigma',0.3, ...
+    'BDLFraction',0.5);
 f=fieldnames(def);
 for j=1:numel(f), if ~isfield(opts,f{j}) || isempty(opts.(f{j})), opts.(f{j})=def.(f{j}); end, end
 if ~isfield(opts,'MaxFEs') || isempty(opts.MaxFEs) || ...

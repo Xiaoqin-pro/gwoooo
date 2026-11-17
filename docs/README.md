@@ -53,6 +53,18 @@ analyze_fclc_stage1();
 
 The runner reuses matching CEC2022 GWO rows for F1/F6 at D=10, and saves new runs, traces, and per-follower credit/weight diagnostics in `results/fclc_stage1_6worker_dev/`. The smoke run is separately stored in `results/fclc_stage1_smoke/` and is not benchmark evidence. The first screen ranked fixed weights first; see `../results/fclc_stage1_6worker_dev/FCLC_STAGE1_REPORT.md` before deciding whether this mechanism should be expanded.
 
+## APL conditional recovery screen
+
+The current APL branch tests two parent-acceptance rules around APL weighted patterns and conditional masked DLM-2 recovery. A8 accepts the best evaluated APL candidate after all tried patterns fail to improve the current wolf; A9 retains the original wolf in that case. The runner only adds missing A8/A9 runs and reuses matching A0/A2/A7 rows.
+
+```matlab
+addpath('code');
+run_apl_handoff_cec2022();
+analyze_apl_handoff();
+```
+
+This screen is complete: 480 new rows, seeds 41–50, CEC2022 F1–F12 at D=10/20, N=30, six workers, and exact FE budgets. Raw per-seed rows, merged comparisons, diversity traces, diagnostics, and the report are in `results/apl_handoff_6worker_dev/`. A9 has the best overall rank, while its rank is weaker at D=20 than A7; see `APL_HANDOFF_REPORT.md` for the per-dimension and unadjusted rank-sum results.
+
 ## Current status
 
-The legacy, APL, staged A0–A7, FAD B5, FAD-1 B6, and FCLC Stage-1 screens are complete. The FCLC screen ran four methods across four synthetic functions and two CEC2022 functions with seeds 41–50; 20 matching CEC GWO rows were reused and 220 missing rows were run on six workers. Its fixed-weight baseline ranked first, so the FCLC mechanism is still under diagnosis. Results are indexed in `../results/README.md`. See `implement-stage/ASSUMPTIONS.md` and `implement-stage/BUILD_NOTE.md` for the current method choices and build record.
+The legacy, APL, staged A0–A7, FAD B5/B6, FCLC Stage-1, and APL conditional recovery screens are complete. The active line is APL conditional recovery; FAD and FCLC remain preserved as separate historical branches. Results are indexed in `../results/README.md`. See `implement-stage/apl_handoff/ASSUMPTIONS.md` and `implement-stage/apl_handoff/BUILD_NOTE.md` for the current method choices and build record.

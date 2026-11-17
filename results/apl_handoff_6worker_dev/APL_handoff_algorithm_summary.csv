@@ -1,0 +1,6 @@
+Algorithm,AverageFunctionRank,BestMeanErrorCases
+A0_APLweighted,4.25,1
+A2_DLM2,2.95833333333333,2
+A7_DLM2_BDL50,2.625,4
+A8_APL_HandoffArchive,3.04166666666667,2
+A9_APL_HandoffStrict,2.125,15

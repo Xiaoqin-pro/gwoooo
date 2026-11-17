@@ -1,0 +1,3 @@
+Variant,Seed,BestFitness,FEs,APLGatePassRate,HandoffOpportunities,HandoffTriggers,StrictRetains
+apl_handoff_archive,41,1.11514022998722,600,0.166192373363688,352,148,0
+apl_handoff_strict,41,0.823214069327531,600,0.156585641605427,354,164,31

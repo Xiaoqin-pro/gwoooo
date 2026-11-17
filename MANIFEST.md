@@ -100,3 +100,31 @@
 | 2026-11-14 09:41 | /experiment-bridge | `docs/PROJECT_SUMMARY.md` | implementation | Latest status with corrected FCLC weight diagnostic meaning. |
 | 2026-11-14 09:46 | /research-implement-feature | `implement-stage/SILENT_ASSUMPTION_SWEEP.json` | implementation | Round-2 same-family/provisional sweep returned no remaining undeclared or stale ledger choices. |
 | 2026-11-14 09:46 | /research-implement-feature | `implement-stage/BUILD_NOTE.md` | implementation | Records completed round-2 resweep and its provisional status. |
+| 2026-11-17 08:48 | /research-implement-feature | `code/gwo_optimize_apl_stage1.m` | implementation | Added A8 archive and A9 strict conditional DLM-2 handoff variants while preserving existing variants. |
+| 2026-11-17 08:48 | /research-implement-feature | `code/run_apl_handoff_cec2022.m` | implementation | Six-worker CEC2022 runner for missing A8/A9 rows with A0/A2/A7 seed reuse. |
+| 2026-11-17 08:48 | /analyze-results | `code/analyze_apl_handoff.m` | implementation | Per-function ranks, dimension-specific ranks, unadjusted rank-sum tests, diagnostics, and diversity summaries. |
+| 2026-11-17 08:48 | /research-implement-feature | `code/run_apl_handoff_smoke.m` | implementation | Small isolated interface smoke for A8/A9. |
+| 2026-11-17 08:48 | /research-implement-feature | `code/verify_apl_handoff_modes.m` | implementation | Acceptance-rule, trigger, and FE-accounting checks for A8/A9. |
+| 2026-11-17 08:48 | /research-implement-feature | `implement-stage/apl_handoff/SPEC.md` | implementation | APL conditional recovery method scope and acceptance rules. |
+| 2026-11-17 08:48 | /research-implement-feature | `implement-stage/apl_handoff/ASSUMPTIONS.md` | implementation | Declared protocol, reuse, archive, FE, and statistical assumptions for the screen. |
+| 2026-11-17 08:48 | /research-implement-feature | `implement-stage/apl_handoff/BUILD_NOTE.md` | implementation | Completed build/run record and current interpretation. |
+| 2026-11-17 08:48 | /research-implement-feature | `results/apl_handoff_smoke/APL_handoff_smoke.csv` | implementation | A8/A9 Sphere smoke output; interface check only. |
+| 2026-11-17 08:48 | /research-implement-feature | `results/apl_handoff_6worker_dev/A8_A9_new_runs.csv` | implementation | 480 new A8/A9 per-seed results, all OK, seeds 41–50. |
+| 2026-11-17 08:48 | /research-implement-feature | `results/apl_handoff_6worker_dev/A0_A2_A7_A8_A9_merged.csv` | implementation | 1,200-row comparison; reused A0/A2/A7 rows and new A8/A9 rows. |
+| 2026-11-17 08:48 | /research-implement-feature | `results/apl_handoff_6worker_dev/A8_A9_diversity_trace_1pct.csv` | implementation | Per-seed diversity traces at 1% FE increments for A8/A9. |
+| 2026-11-17 08:48 | /research-implement-feature | `results/apl_handoff_6worker_dev/APL_handoff_checkpoint.mat` | implementation | Checkpoint with raw, merged, and diversity trace tables. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_handoff_per_function.csv` | implementation | Per-function, per-dimension residual-error summaries and ranks. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_handoff_algorithm_summary.csv` | implementation | Five-variant average ranks and best-mean counts. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_handoff_ranksum.csv` | implementation | Per-setting unadjusted two-sided rank-sum comparisons with direction and wins/losses. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_handoff_diagnostics.csv` | implementation | Aggregated gate, archive, handoff, DLM, and runtime diagnostics. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_handoff_mean_diversity.csv` | implementation | Mean and standard deviation diversity traces by FE percentage. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_HANDOFF_REPORT.md` | implementation | Latest APL conditional recovery result report and dimension analysis. |
+| 2026-11-17 08:48 | /analyze-results | `results/apl_handoff_6worker_dev/APL_HANDOFF_REPORT_20261117_0848.md` | implementation | Timestamped APL conditional recovery report. |
+| 2026-11-17 08:48 | /experiment-bridge | `README_20261117_0848.md` | implementation | Timestamped repository overview with the APL handoff screen as current direction. |
+| 2026-11-17 08:48 | /experiment-bridge | `README.md` | implementation | Latest repository overview with active APL direction. |
+| 2026-11-17 08:48 | /experiment-bridge | `results/README_20261117_0848.md` | implementation | Timestamped experiment index with the APL handoff results. |
+| 2026-11-17 08:48 | /experiment-bridge | `results/README.md` | implementation | Latest experiment index. |
+| 2026-11-17 08:48 | /experiment-bridge | `docs/README_20261117_0848.md` | implementation | Timestamped usage notes including the APL handoff runner. |
+| 2026-11-17 08:48 | /experiment-bridge | `docs/README.md` | implementation | Latest usage notes for the current APL direction. |
+| 2026-11-17 08:48 | /experiment-bridge | `docs/PROJECT_SUMMARY_20261117_0848.md` | implementation | Timestamped project summary with APL handoff results. |
+| 2026-11-17 08:48 | /experiment-bridge | `docs/PROJECT_SUMMARY.md` | implementation | Latest project status and APL handoff results. |
